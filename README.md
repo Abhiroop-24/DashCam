@@ -7,7 +7,7 @@ A real-time dashcam system built with a **Raspberry Pi** and a **laptop (NVIDIA 
 ## 📸 System Overview
 
 ```
-┌──────────────────────┐         UDP Video (H.264)          ┌──────────────────────────┐
+┌──────────────────────┐         UDP Video (H.264)           ┌──────────────────────────┐
 │    Raspberry Pi      │ ──────────────────────────────────► │    Laptop (GPU)          │
 │                      │         UDP Sensor Data             │                          │
 │  • Pi Camera Module  │ ──────────────────────────────────► │  • YOLOv8 AI Detection   │
