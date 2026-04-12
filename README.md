@@ -105,8 +105,8 @@ dashcam/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-username>/smart-dashcam.git
-cd smart-dashcam
+git clone https://github.com/Abhiroop-24/DashCam.git
+cd DashCam
 ```
 
 ### 2. Laptop Setup
@@ -243,6 +243,57 @@ The system uses **YOLOv8s** running on the laptop's GPU for real-time object det
 - **Detected classes:** Person, Bicycle, Car, Motorcycle, Bus, Truck
 - **Proximity alert:** Triggers when an object's bounding box occupies > 30% of the frame **AND** the ultrasonic sensor reads < 25cm
 - **Inference:** ~15-25ms per frame on RTX 2050
+
+---
+
+## ❗ Troubleshooting
+
+### Port Already in Use (Address already in use)
+
+If you see `OSError: [Errno 98] Address already in use` when starting the dashboard, a previous process is still holding the port.
+
+```bash
+# Find what's using port 5000 (dashboard)
+sudo lsof -i :5000
+
+# Kill it by PID
+sudo kill -9 <PID>
+
+# Or kill all processes on ports 5000, 8080, 8081, 8082 at once
+sudo fuser -k 5000/tcp 8080/udp 8081/udp 8082/udp
+```
+
+**Quick one-liner to kill everything and restart:**
+```bash
+sudo fuser -k 5000/tcp 8080/udp 8081/udp 8082/udp 2>/dev/null; bash start.sh
+```
+
+### Pi Stream Not Connecting
+
+```bash
+# Check if Pi service is running
+ssh abhiroop@10.42.0.116 "systemctl status dashcam"
+
+# Restart the Pi service
+ssh abhiroop@10.42.0.116 "sudo systemctl restart dashcam"
+
+# Check Pi logs for errors
+ssh abhiroop@10.42.0.116 "journalctl -u dashcam -n 50"
+```
+
+### H.264 Decode Errors (`non-existing PPS 0 referenced`)
+
+These messages during startup are **normal** — they appear while ffmpeg waits for the first keyframe from the Pi's H.264 stream. They stop once the stream syncs (usually within 2-3 seconds).
+
+### Dashboard Shows `--` for Sensor Values
+
+- Make sure the Pi is connected and the dashcam service is running
+- Check that `PI_IP` in `config.py` matches the Pi's actual IP
+- Verify UDP port 8081 is not blocked: `sudo ufw allow 8081/udp`
+
+### Segmentation Fault on Exit
+
+Occasional segfaults on `Ctrl+C` shutdown are caused by OpenCV's internal cleanup and are harmless — the system has already saved all data before exiting.
 
 ---
 
