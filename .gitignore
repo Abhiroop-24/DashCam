@@ -1,0 +1,27 @@
+# Recordings & Snapshots (generated at runtime)
+recordings/
+snapshots/
+
+# Database
+events.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# YOLO model weights (large binary files)
+*.pt
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Agents (Gemini workspace config)
+.agents/

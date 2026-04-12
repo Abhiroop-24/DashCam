@@ -1,0 +1,20 @@
+[Unit]
+Description=Smart DashCam AI Service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=abhiroop
+WorkingDirectory=/home/abhiroop/dashcam
+ExecStart=/usr/bin/python3 /home/abhiroop/dashcam/main_pi.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
