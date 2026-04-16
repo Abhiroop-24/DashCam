@@ -15,7 +15,81 @@ from pi_communicator import PiCommunicator
 from dashboard import init_dashboard, run_dashboard, socketio
 
 
+# ─── SOS State ───────────────────────────────────────────
+sos_active = False
+sos_last_trigger = 0
+g_spike_times = []
+
+
+def trigger_sos(reason, sensor_data=None, frame=None, recorder=None, pi_comm=None):
+    """Activate SOS — emit to dashboard, save evidence, alert Pi."""
+    global sos_active, sos_last_trigger
+
+    now = time.time()
+    if sos_active or (now - sos_last_trigger < config.SOS_COOLDOWN):
+        return
+
+    sos_active = True
+    sos_last_trigger = now
+
+    print("\n" + "!" * 60)
+    print("  🚨 SOS EMERGENCY TRIGGERED")
+    print(f"  Reason: {reason}")
+    print("!" * 60)
+
+    # Save crash evidence
+    if recorder and frame is not None:
+        recorder.save_event(
+            "sos_emergency",
+            f"SOS: {reason}",
+            sensor_data=sensor_data,
+            snapshot_frame=frame
+        )
+
+    # Alert Pi — flash LED rapidly, update OLED
+    if pi_comm:
+        pi_comm.send_alert("SOS EMERGENCY")
+        pi_comm.update_oled(
+            line1="!! SOS ACTIVE !!",
+            line2=reason[:20],
+            line3="Emergency Mode",
+            line4=time.strftime("%H:%M:%S")
+        )
+
+    # Emit to dashboard
+    try:
+        socketio.emit('sos_triggered', {
+            'reason': reason,
+            'timestamp': time.time(),
+            'sensor_data': sensor_data
+        })
+    except Exception:
+        pass
+
+
+def cancel_sos(pi_comm=None):
+    """Cancel active SOS."""
+    global sos_active
+    sos_active = False
+    print("[MAIN] SOS cancelled")
+
+    if pi_comm:
+        pi_comm.update_oled(
+            line1="DashCam Active",
+            line2="SOS Cancelled",
+            line3="Monitoring...",
+            line4=time.strftime("%H:%M:%S")
+        )
+
+    try:
+        socketio.emit('sos_cancelled', {})
+    except Exception:
+        pass
+
+
 def main():
+    global g_spike_times
+
     print("=" * 56)
     print("  Smart DashCam & Collision Monitoring System")
     print("  AI-Powered | RTX 2050 | YOLOv8n")
@@ -32,7 +106,7 @@ def main():
     PROXIMITY_COOLDOWN = 15
     COLLISION_COOLDOWN = 10
 
-    # Collision callback — saves 5s buffer + snapshot
+    # Collision callback — saves 5s buffer + snapshot + checks SOS
     def on_collision(sensor_data):
         nonlocal last_collision_event
         now = time.time()
@@ -53,6 +127,22 @@ def main():
             socketio.emit('collision_alert', {})
         except Exception:
             pass
+
+        # Track G-force spikes for auto-SOS
+        g_spike_times.append(now)
+        # Remove old spikes outside the window
+        g_spike_times[:] = [t for t in g_spike_times if now - t < config.SOS_SPIKE_WINDOW]
+
+        if len(g_spike_times) >= config.SOS_SPIKE_COUNT:
+            g_force_val = sensor_data.get('g_force', 0)
+            trigger_sos(
+                f"Multiple collisions detected ({len(g_spike_times)} impacts, {g_force_val:.1f}g)",
+                sensor_data=sensor_data,
+                frame=frame,
+                recorder=recorder,
+                pi_comm=pi_comm
+            )
+            g_spike_times.clear()
 
     # AI proximity — ONLY triggers when AI sees person close AND ultrasonic < threshold
     def on_ai_proximity(detection, frame):

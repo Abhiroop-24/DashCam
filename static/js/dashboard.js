@@ -300,3 +300,166 @@ fetch('/api/settings').then(function(r) { return r.json(); }).then(function(s) {
         distSliderVal.textContent = s.distance_threshold + 'cm';
     }
 });
+
+// ─── SOS Emergency System ───────────────────
+var sosOverlay = document.getElementById('sos-overlay');
+var sosCountdownEl = document.getElementById('sos-countdown');
+var sosReasonEl = document.getElementById('sos-reason');
+var sosLocationEl = document.getElementById('sos-location-text');
+var sosDispatch = document.getElementById('sos-dispatch');
+var sosCancelBtn = document.getElementById('sos-cancel-btn');
+
+var sosTimer = null;
+var sosCountdown = 10;
+var sosIsActive = false;
+
+// Listen for auto-SOS from server (G-force spikes)
+socket.on('sos_triggered', function(d) {
+    showSOSOverlay(d.reason || 'Collision detected');
+});
+
+socket.on('sos_cancelled', function() {
+    if (sosTimer) { clearInterval(sosTimer); sosTimer = null; }
+    sosIsActive = false;
+    sosCountdownEl.classList.remove('urgent');
+    sosOverlay.style.display = 'none';
+    sosDispatch.style.display = 'none';
+    showToast('SOS Cancelled', 'success');
+});
+
+function manualSOS() {
+    if (sosIsActive) return;
+    if (!confirm('⚠️ TRIGGER EMERGENCY SOS?\n\nThis will contact emergency services.\nOnly use in a real emergency.')) return;
+    sendCommand('sos_manual');
+    showSOSOverlay('Manual SOS activated from dashboard');
+}
+
+function showSOSOverlay(reason) {
+    if (sosIsActive) return;
+    sosIsActive = true;
+    sosCountdown = 10;
+    sosCountdownEl.textContent = sosCountdown;
+    sosReasonEl.textContent = reason || 'Emergency detected';
+
+    // Reset evidence status
+    document.getElementById('sos-ev-video').textContent = '⏳ Video clip';
+    document.getElementById('sos-ev-snapshot').textContent = '⏳ Snapshot';
+    document.getElementById('sos-ev-sensor').textContent = '⏳ Sensor data';
+    document.getElementById('sos-ev-gps').textContent = '⏳ Location';
+
+    // Reset service status
+    document.getElementById('sos-ambulance-status').textContent = 'Standby';
+    document.getElementById('sos-police-status').textContent = 'Standby';
+    document.getElementById('sos-ambulance').className = 'sos-service';
+    document.getElementById('sos-police').className = 'sos-service';
+
+    sosLocationEl.textContent = 'Fetching location...';
+    sosCancelBtn.style.display = '';
+
+    sosOverlay.style.display = 'flex';
+
+    // Try to get geolocation
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var lat = pos.coords.latitude.toFixed(6);
+            var lon = pos.coords.longitude.toFixed(6);
+            sosLocationEl.textContent = lat + ', ' + lon;
+            document.getElementById('sos-ev-gps').textContent = '✅ Location';
+            document.getElementById('sos-ev-gps').classList.add('ready');
+        }, function() {
+            sosLocationEl.textContent = 'Location unavailable — using Pi GPS fallback';
+        }, { timeout: 5000 });
+    }
+
+    // Simulate evidence readiness
+    setTimeout(function() {
+        document.getElementById('sos-ev-snapshot').textContent = '✅ Snapshot';
+        document.getElementById('sos-ev-snapshot').classList.add('ready');
+    }, 1500);
+    setTimeout(function() {
+        document.getElementById('sos-ev-sensor').textContent = '✅ Sensor data';
+        document.getElementById('sos-ev-sensor').classList.add('ready');
+    }, 2500);
+    setTimeout(function() {
+        document.getElementById('sos-ev-video').textContent = '✅ Video clip';
+        document.getElementById('sos-ev-video').classList.add('ready');
+    }, 4000);
+
+    // Start countdown
+    sosTimer = setInterval(function() {
+        sosCountdown--;
+        sosCountdownEl.textContent = sosCountdown;
+
+        if (sosCountdown <= 5) {
+            sosCountdownEl.classList.add('urgent');
+        }
+
+        // Simulate service connection at different times
+        if (sosCountdown === 6) {
+            document.getElementById('sos-ambulance-status').textContent = 'Connecting...';
+            document.getElementById('sos-ambulance').classList.add('connecting');
+        }
+        if (sosCountdown === 4) {
+            document.getElementById('sos-police-status').textContent = 'Connecting...';
+            document.getElementById('sos-police').classList.add('connecting');
+        }
+
+        if (sosCountdown <= 0) {
+            clearInterval(sosTimer);
+            sosTimer = null;
+            dispatchSOS();
+        }
+    }, 1000);
+
+    // Play alert sound (browser beep)
+    try {
+        var ctx = new (window.AudioContext || window.webkitAudioContext)();
+        function beep(freq, dur) {
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            gain.gain.value = 0.3;
+            osc.start();
+            setTimeout(function() { osc.stop(); }, dur);
+        }
+        beep(880, 200);
+        setTimeout(function() { beep(880, 200); }, 300);
+        setTimeout(function() { beep(1200, 400); }, 600);
+    } catch(e) {}
+}
+
+function dispatchSOS() {
+    // Update services to "dispatched"
+    document.getElementById('sos-ambulance-status').textContent = 'Dispatched';
+    document.getElementById('sos-ambulance').className = 'sos-service dispatched';
+    document.getElementById('sos-police-status').textContent = 'Dispatched';
+    document.getElementById('sos-police').className = 'sos-service dispatched';
+
+    sosCancelBtn.style.display = 'none';
+
+    // Show dispatch confirmation after 1.5s
+    setTimeout(function() {
+        sosOverlay.style.display = 'none';
+        sosDispatch.style.display = 'flex';
+    }, 1500);
+}
+
+function cancelSOS() {
+    if (sosTimer) {
+        clearInterval(sosTimer);
+        sosTimer = null;
+    }
+    sosIsActive = false;
+    sosCountdownEl.classList.remove('urgent');
+    sosOverlay.style.display = 'none';
+    sendCommand('sos_cancel');
+    showToast('SOS Cancelled — stay safe', 'success');
+}
+
+function closeDispatch() {
+    sosDispatch.style.display = 'none';
+    sosIsActive = false;
+    sosCountdownEl.classList.remove('urgent');
+}

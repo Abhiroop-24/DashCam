@@ -48,6 +48,11 @@ POST_EVENT_SECONDS = 5
 DASHBOARD_HOST = "0.0.0.0"
 DASHBOARD_PORT = 5000
 
+# SOS Emergency System
+SOS_SPIKE_COUNT = 2          # Number of G-force spikes to auto-trigger SOS
+SOS_SPIKE_WINDOW = 10        # Seconds window for consecutive spikes
+SOS_COOLDOWN = 60            # Seconds before SOS can re-trigger
+
 # Ensure directories exist
 os.makedirs(RECORDING_DIR, exist_ok=True)
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)

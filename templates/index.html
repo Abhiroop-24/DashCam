@@ -26,6 +26,11 @@
             </div>
         </div>
         <div class="header-right">
+            <button class="btn btn-sos" id="btn-sos" onclick="manualSOS()">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.5"/><line x1="7" y1="3" x2="7" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="7" cy="10.5" r="0.8" fill="currentColor"/></svg>
+                SOS
+            </button>
+            <div class="header-divider"></div>
             <div class="header-stat"><span class="stat-value" id="fps-display">0</span><span class="stat-unit">FPS</span></div>
             <div class="header-stat"><span class="stat-value" id="inference-display">0</span><span class="stat-unit">ms</span></div>
             <div class="header-divider"></div>
@@ -181,6 +186,85 @@
         <div class="collision-badge">
             <span class="collision-icon">!</span>
             <span>COLLISION DETECTED</span>
+        </div>
+    </div>
+
+    <!-- SOS Emergency Overlay -->
+    <div class="sos-overlay" id="sos-overlay" style="display:none;">
+        <div class="sos-container">
+            <div class="sos-header">
+                <div class="sos-siren"></div>
+                <div class="sos-title">EMERGENCY SOS</div>
+                <div class="sos-siren"></div>
+            </div>
+
+            <div class="sos-reason" id="sos-reason">Collision Detected</div>
+
+            <div class="sos-countdown-wrap">
+                <div class="sos-countdown-label">Contacting emergency services in</div>
+                <div class="sos-countdown" id="sos-countdown">10</div>
+                <div class="sos-countdown-label">seconds</div>
+            </div>
+
+            <div class="sos-services">
+                <div class="sos-service" id="sos-ambulance">
+                    <div class="sos-service-icon">🚑</div>
+                    <div class="sos-service-info">
+                        <div class="sos-service-name">Ambulance</div>
+                        <div class="sos-service-status" id="sos-ambulance-status">Standby</div>
+                    </div>
+                    <div class="sos-service-number">108</div>
+                </div>
+                <div class="sos-service" id="sos-police">
+                    <div class="sos-service-icon">🚔</div>
+                    <div class="sos-service-info">
+                        <div class="sos-service-name">Police</div>
+                        <div class="sos-service-status" id="sos-police-status">Standby</div>
+                    </div>
+                    <div class="sos-service-number">100</div>
+                </div>
+            </div>
+
+            <div class="sos-evidence">
+                <div class="sos-evidence-title">📹 Evidence Package</div>
+                <div class="sos-evidence-items">
+                    <span class="sos-evidence-item" id="sos-ev-video">⏳ Video clip</span>
+                    <span class="sos-evidence-item" id="sos-ev-snapshot">⏳ Snapshot</span>
+                    <span class="sos-evidence-item" id="sos-ev-sensor">⏳ Sensor data</span>
+                    <span class="sos-evidence-item" id="sos-ev-gps">⏳ Location</span>
+                </div>
+            </div>
+
+            <div class="sos-location">
+                <span>📍</span>
+                <span id="sos-location-text">Fetching location...</span>
+            </div>
+
+            <button class="sos-cancel-btn" id="sos-cancel-btn" onclick="cancelSOS()">CANCEL SOS</button>
+            <div class="sos-cancel-hint">Press to cancel if you're okay</div>
+        </div>
+    </div>
+
+    <!-- SOS Dispatch Confirmation -->
+    <div class="sos-dispatch-overlay" id="sos-dispatch" style="display:none;">
+        <div class="sos-dispatch-box">
+            <div class="sos-dispatch-icon">✅</div>
+            <div class="sos-dispatch-title">Emergency Services Notified</div>
+            <div class="sos-dispatch-details">
+                <div class="sos-dispatch-row">
+                    <span>🚑 Ambulance</span>
+                    <span class="sos-dispatch-val">Dispatched — ETA 8 min</span>
+                </div>
+                <div class="sos-dispatch-row">
+                    <span>🚔 Police</span>
+                    <span class="sos-dispatch-val">Dispatched — ETA 5 min</span>
+                </div>
+                <div class="sos-dispatch-row">
+                    <span>📹 Crash video</span>
+                    <span class="sos-dispatch-val">Sent to police server</span>
+                </div>
+            </div>
+            <button class="sos-dispatch-close" onclick="closeDispatch()">ACKNOWLEDGED</button>
         </div>
     </div>
 

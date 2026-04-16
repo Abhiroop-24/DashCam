@@ -195,6 +195,22 @@ def handle_command(data):
         pi_cmd = data.get('pi_command', '')
         pi_comm.send_command(pi_cmd)
 
+    elif cmd == 'sos_manual':
+        from main import trigger_sos
+        frame = stream_receiver.get_frame() if stream_receiver else None
+        sensor = sensor_listener.get_data() if sensor_listener else None
+        trigger_sos(
+            "Manual SOS activated from dashboard",
+            sensor_data=sensor,
+            frame=frame,
+            recorder=event_recorder,
+            pi_comm=pi_comm
+        )
+
+    elif cmd == 'sos_cancel':
+        from main import cancel_sos
+        cancel_sos(pi_comm=pi_comm)
+
 
 def emit_realtime_data():
     """Background thread to push real-time data via Socket.IO."""

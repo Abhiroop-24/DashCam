@@ -760,6 +760,333 @@ input[type="range"]::-webkit-slider-thumb {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+/* ─── SOS Button ─────────────────────────── */
+.btn-sos {
+    border-color: #cc2020 !important;
+    color: #cc2020 !important;
+    font-weight: 700 !important;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    animation: sos-btn-glow 3s infinite;
+}
+
+.btn-sos:hover {
+    background: #1c0808 !important;
+    box-shadow: 0 0 15px rgba(204, 32, 32, 0.3);
+}
+
+@keyframes sos-btn-glow {
+    0%, 100% { box-shadow: none; }
+    50% { box-shadow: 0 0 8px rgba(204, 32, 32, 0.2); }
+}
+
+/* ─── SOS Overlay ────────────────────────── */
+.sos-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 2, 2, 0.96);
+    backdrop-filter: blur(8px);
+    animation: sos-flash-border 1s infinite;
+}
+
+@keyframes sos-flash-border {
+    0%, 100% { box-shadow: inset 0 0 0 3px rgba(204, 32, 32, 0.8); }
+    50% { box-shadow: inset 0 0 0 3px rgba(204, 32, 32, 0.2); }
+}
+
+.sos-container {
+    text-align: center;
+    max-width: 480px;
+    width: 90%;
+}
+
+.sos-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.sos-siren {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    animation: siren 0.5s infinite alternate;
+}
+
+@keyframes siren {
+    0% { background: #cc2020; box-shadow: 0 0 15px #cc2020; }
+    100% { background: #2040cc; box-shadow: 0 0 15px #2040cc; }
+}
+
+.sos-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #cc2020;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(204, 32, 32, 0.5);
+}
+
+.sos-reason {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 24px;
+    font-family: var(--mono);
+}
+
+/* Countdown */
+.sos-countdown-wrap {
+    margin-bottom: 28px;
+}
+
+.sos-countdown-label {
+    font-size: 0.7rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.sos-countdown {
+    font-size: 4.5rem;
+    font-weight: 800;
+    font-family: var(--mono);
+    color: #f5f5f5;
+    line-height: 1.1;
+    margin: 8px 0;
+    transition: color 0.3s, text-shadow 0.3s;
+}
+
+.sos-countdown.urgent {
+    color: #cc2020;
+    text-shadow: 0 0 20px rgba(204, 32, 32, 0.6);
+    animation: countdown-pulse 1s infinite;
+}
+
+@keyframes countdown-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+/* Emergency Services */
+.sos-services {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.sos-service {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid #222;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.sos-service.connecting {
+    border-color: #bb9920;
+    background: rgba(187, 153, 32, 0.06);
+}
+
+.sos-service.dispatched {
+    border-color: #22aa22;
+    background: rgba(34, 170, 34, 0.06);
+}
+
+.sos-service-icon { font-size: 1.5rem; }
+
+.sos-service-info { flex: 1; text-align: left; }
+
+.sos-service-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.sos-service-status {
+    font-size: 0.65rem;
+    font-family: var(--mono);
+    color: #666;
+    margin-top: 2px;
+    transition: color 0.3s;
+}
+
+.sos-service.connecting .sos-service-status { color: #bb9920; }
+.sos-service.dispatched .sos-service-status { color: #22aa22; }
+
+.sos-service-number {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #555;
+    letter-spacing: 1px;
+}
+
+/* Evidence */
+.sos-evidence {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #1a1a1a;
+    border-radius: 8px;
+}
+
+.sos-evidence-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.sos-evidence-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sos-evidence-item {
+    font-size: 0.62rem;
+    font-family: var(--mono);
+    color: #555;
+    padding: 3px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #1a1a1a;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+
+.sos-evidence-item.ready {
+    color: #22aa22;
+    border-color: rgba(34, 170, 34, 0.3);
+}
+
+/* Location */
+.sos-location {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: #555;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Cancel */
+.sos-cancel-btn {
+    font-family: var(--font);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 14px 48px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    background: transparent;
+    color: #e0e0e0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sos-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #888;
+}
+
+.sos-cancel-btn:active { transform: scale(0.97); }
+
+.sos-cancel-hint {
+    font-size: 0.6rem;
+    color: #444;
+    margin-top: 8px;
+}
+
+/* ─── SOS Dispatch Confirmation ──────────── */
+.sos-dispatch-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2, 10, 2, 0.96);
+    backdrop-filter: blur(8px);
+}
+
+.sos-dispatch-box {
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+    padding: 40px 30px;
+    background: #111;
+    border: 1px solid #22aa22;
+    border-radius: 12px;
+    box-shadow: 0 0 40px rgba(34, 170, 34, 0.15);
+}
+
+.sos-dispatch-icon {
+    font-size: 3rem;
+    margin-bottom: 12px;
+}
+
+.sos-dispatch-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #22aa22;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+}
+
+.sos-dispatch-details {
+    margin-bottom: 28px;
+}
+
+.sos-dispatch-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #1a1a1a;
+    font-size: 0.78rem;
+    color: #ccc;
+}
+
+.sos-dispatch-row:last-child { border-bottom: none; }
+
+.sos-dispatch-val {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: #22aa22;
+}
+
+.sos-dispatch-close {
+    font-family: var(--font);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    padding: 12px 36px;
+    border: 1px solid #22aa22;
+    border-radius: 6px;
+    background: rgba(34, 170, 34, 0.1);
+    color: #22aa22;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sos-dispatch-close:hover {
+    background: rgba(34, 170, 34, 0.2);
+}
+
 /* ─── Responsive ─────────────────────────── */
 @media (max-width: 960px) {
     .grid { grid-template-columns: 1fr; }
