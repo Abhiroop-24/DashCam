@@ -1,20 +1,20 @@
 # 🚗 Smart DashCam — AI-Powered Collision Monitoring System
 
-A real-time dashcam system built with a **Raspberry Pi** and a **laptop (NVIDIA GPU)**, featuring live video streaming, AI object detection (YOLOv8), sensor fusion, and a web-based monitoring dashboard.
+A real-time dashcam system built with a **Raspberry Pi** and a **laptop (NVIDIA GPU)**, featuring live video streaming, AI object detection (YOLOv8), sensor fusion, SOS emergency alerts, and a web-based monitoring dashboard.
 
 ---
 
 ## 📸 System Overview
 
 ```
-┌──────────────────────┐         UDP Video (H.264)           ┌──────────────────────────┐
+┌──────────────────────┐         UDP Video (H.264)          ┌──────────────────────────┐
 │    Raspberry Pi      │ ──────────────────────────────────► │    Laptop (GPU)          │
 │                      │         UDP Sensor Data             │                          │
 │  • Pi Camera Module  │ ──────────────────────────────────► │  • YOLOv8 AI Detection   │
 │  • MPU6050 (IMU)     │                                     │  • Flask Web Dashboard   │
 │  • HC-SR04 (Sonar)   │ ◄────────────────────────────────── │  • Event Recording       │
 │  • SSD1306 OLED      │         UDP Commands                │  • Collision Detection   │
-│  • Status LED        │                                     │  • Ring Buffer (30s)     │
+│  • Status LED        │                                     │  • SOS Emergency System  │
 └──────────────────────┘                                     └──────────────────────────┘
 ```
 
@@ -22,10 +22,11 @@ A real-time dashcam system built with a **Raspberry Pi** and a **laptop (NVIDIA 
 
 1. **Pi streams live video** via `rpicam-vid → ffmpeg → UDP` to the laptop
 2. **Pi reads sensors** (MPU6050 accelerometer/gyro/temperature + HC-SR04 ultrasonic) and sends data over UDP at 20 Hz
-3. **Laptop runs YOLOv8** on the GPU to detect vehicles, pedestrians, and cyclists in real-time
+3. **Laptop runs YOLOv8s** on the GPU to detect vehicles, pedestrians, and cyclists in real-time
 4. **Collision detection** uses dual-validation: AI proximity (bounding box area) **AND** ultrasonic distance must both agree before triggering an alert
-5. **Events are recorded** with a 5-second pre-event buffer + 5-second post-event capture, re-encoded to H.264 for browser playback
-6. **Web dashboard** at `http://localhost:5000` shows everything live
+5. **SOS Emergency** auto-triggers after 2 consecutive G-force spikes — contacts emergency services with crash evidence
+6. **Events are recorded** with a 5-second pre-event buffer + 5-second post-event capture, re-encoded to H.264 for browser playback
+7. **Web dashboard** at `http://localhost:5000` shows everything live
 
 ---
 
@@ -46,7 +47,7 @@ A real-time dashcam system built with a **Raspberry Pi** and a **laptop (NVIDIA 
 |-----------|------------|
 | **GPU** | NVIDIA GPU with CUDA support (tested: RTX 2050) |
 | **Python** | 3.10+ |
-| **OS** | Linux (Ubuntu/Debian recommended) |
+| **OS** | Linux (Ubuntu 22.04+ / Debian 12+ recommended) |
 | **Network** | Direct connection to Pi (USB tethering / Ethernet) |
 
 ---
@@ -65,7 +66,7 @@ LED:                GPIO17 (Pin 11) → 220Ω Resistor → GND
 ## 📁 Project Structure
 
 ```
-dashcam/
+DashCam/
 ├── main.py                  # Laptop entry point — orchestrates everything
 ├── config.py                # Laptop configuration (ports, thresholds, paths)
 ├── stream_receiver.py       # Receives H.264 video stream from Pi via UDP
@@ -94,20 +95,13 @@ dashcam/
 │   ├── dashcam.service      # systemd service for autostart
 │   └── requirements_pi.txt  # Pi Python dependencies
 │
-├── recordings/              # (gitignored) Saved event video clips
-└── snapshots/               # (gitignored) Saved event snapshots
+├── recordings/              # Saved event video clips (auto-created)
+└── snapshots/               # Saved event snapshots (auto-created)
 ```
 
 ---
 
 ## 🚀 Setup & Installation (Fresh Linux Laptop)
-
-### Prerequisites
-
-- **Linux** (Ubuntu 22.04+ / Debian 12+ recommended)
-- **NVIDIA GPU** with CUDA support
-- **Python 3.10+**
-- **Raspberry Pi** connected via USB tethering or Ethernet
 
 ### Step 1: Install System Dependencies
 
@@ -116,18 +110,28 @@ sudo apt update
 sudo apt install -y python3 python3-venv python3-pip ffmpeg sshpass git
 ```
 
-- `ffmpeg` — needed for video stream decoding and H.264 re-encoding
-- `sshpass` — needed for `deploy_to_pi.sh` to SSH into the Pi without password prompts
+| Package | Why it's needed |
+|---------|----------------|
+| `python3`, `python3-venv`, `python3-pip` | Python runtime and package manager |
+| `ffmpeg` | Video stream decoding + H.264 re-encoding for saved clips |
+| `sshpass` | Auto-SSH into Pi during deployment (used by `deploy_to_pi.sh`) |
+| `git` | Clone the repository |
 
-### Step 2: Install NVIDIA Drivers + CUDA (if not already installed)
+### Step 2: Install NVIDIA Drivers + CUDA
 
 ```bash
 # Check if CUDA is already working
 nvidia-smi
+```
 
-# If not installed, install NVIDIA drivers:
-sudo apt install -y nvidia-driver-535    # or your GPU's compatible version
+If NVIDIA drivers are **not installed**:
+```bash
+# Ubuntu:
+sudo apt install -y nvidia-driver-535    # or latest version for your GPU
 sudo reboot
+
+# Verify after reboot:
+nvidia-smi
 ```
 
 ### Step 3: Clone the Repository
@@ -137,46 +141,73 @@ git clone https://github.com/Abhiroop-24/DashCam.git
 cd DashCam
 ```
 
-### Step 4: Create Virtual Environment & Install Dependencies
+### Step 4: Create Virtual Environment & Install Python Dependencies
 
 ```bash
 # Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# Install PyTorch with CUDA first (check your CUDA version with: nvcc --version)
+# Install PyTorch with CUDA support
+# Check your CUDA version: nvidia-smi (top right shows CUDA version)
+
 # For CUDA 12.x:
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
 # For CUDA 11.8:
 # pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 
-# Install remaining dependencies
+# Install all other dependencies
 pip install -r requirements.txt
 ```
 
-> **Verify CUDA is working:**
-> ```bash
-> python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPU: {torch.cuda.get_device_name(0)}')"
-> ```
-> You should see `CUDA: True, GPU: <your GPU name>`
+### Step 5: Download YOLOv8 Model
 
-### Step 5: Configure Network IPs
-
-Find your laptop's IP and Pi's IP on the shared network:
+The system uses **YOLOv8s** for object detection. Download the model weights:
 
 ```bash
-# Find your laptop's IP (look for the Pi-facing interface)
-ip addr show
+# Download YOLOv8s weights (22MB) — auto-downloads via ultralytics
+source venv/bin/activate
+python -c "from ultralytics import YOLO; YOLO('yolov8s.pt')"
 ```
 
-Then edit the config files:
+> This downloads `yolov8s.pt` to the project directory. The file is ~22MB and is gitignored (not uploaded to GitHub).
+
+### Step 6: Verify Everything Works
+
+```bash
+source venv/bin/activate
+
+# Check CUDA
+python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPU: {torch.cuda.get_device_name(0)}')"
+# Expected: CUDA: True, GPU: <your GPU name>
+
+# Check YOLO
+python -c "from ultralytics import YOLO; m = YOLO('yolov8s.pt'); print('YOLOv8s loaded OK')"
+# Expected: YOLOv8s loaded OK
+
+# Check Flask
+python -c "import flask, flask_socketio; print('Flask OK')"
+# Expected: Flask OK
+```
+
+### Step 7: Configure Network IPs
+
+Find your Pi's IP:
+```bash
+# If Pi is connected via USB tethering:
+arp -a | grep 10.42
+
+# Or scan the network:
+nmap -sn 10.42.0.0/24
+```
+
+Edit the config files to match your network:
 
 ```bash
 nano config.py
 ```
 ```python
-# Change these to match YOUR network
 PI_IP = "10.42.0.116"       # ← Your Pi's IP address
 LAPTOP_IP = "10.42.0.1"     # ← Your laptop's IP address
 ```
@@ -185,62 +216,68 @@ LAPTOP_IP = "10.42.0.1"     # ← Your laptop's IP address
 nano pi_dashcam/config_pi.py
 ```
 ```python
-# Must match the values above
-LAPTOP_IP = "10.42.0.1"
-PI_IP = "10.42.0.116"
+LAPTOP_IP = "10.42.0.1"     # ← Must match your laptop's IP
+PI_IP = "10.42.0.116"       # ← Must match your Pi's IP
 ```
 
-### Step 6: Configure Deploy Script
-
-Edit `deploy_to_pi.sh` with your Pi's SSH credentials:
+### Step 8: Configure & Run Deploy Script
 
 ```bash
 nano deploy_to_pi.sh
 ```
 ```bash
-PI_USER="your_pi_username"          # default: pi
+PI_USER="your_pi_username"          # default: pi or your username
 PI_HOST="10.42.0.116"               # your Pi's IP
-PI_PASS="your_pi_password"          # your Pi's password
+PI_PASS="your_pi_password"          # your Pi's SSH password
 PI_DIR="/home/your_pi_username/dashcam"
 ```
 
-### Step 7: Deploy Code to Raspberry Pi
-
-Make sure your Pi is connected and reachable:
-
+Then deploy:
 ```bash
-# Test connectivity
+# Test Pi connectivity first
 ping -c 1 10.42.0.116
 
-# Deploy
+# Deploy code + install dependencies + start service
 bash deploy_to_pi.sh
 ```
 
-This copies code to the Pi, installs Python packages, and starts the `dashcam` service.
-
-### Step 8: Start the Dashboard
+### Step 9: Start the System
 
 ```bash
 bash start.sh
 ```
 
-Open **http://localhost:5000** in your browser. Done! 🎉
+Open **http://localhost:5000** in your browser. 🎉
 
-### Quick Reference — All Commands
+---
+
+### Quick Copy-Paste Setup (All Commands)
 
 ```bash
-# One-time setup (copy-paste all at once)
-sudo apt install -y python3 python3-venv python3-pip ffmpeg sshpass git
-git clone https://github.com/Abhiroop-24/DashCam.git
-cd DashCam
-python3 -m venv venv
-source venv/bin/activate
+# System packages
+sudo apt update && sudo apt install -y python3 python3-venv python3-pip ffmpeg sshpass git
+
+# Clone
+git clone https://github.com/Abhiroop-24/DashCam.git && cd DashCam
+
+# Python environment
+python3 -m venv venv && source venv/bin/activate
+
+# PyTorch (CUDA 12.x — change if you have CUDA 11.8)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# Dependencies
 pip install -r requirements.txt
 
-# Edit config.py and pi_dashcam/config_pi.py with your IPs
-# Edit deploy_to_pi.sh with your Pi's SSH credentials
+# Download YOLO model
+python -c "from ultralytics import YOLO; YOLO('yolov8s.pt')"
 
+# ⚠️ Edit these files with YOUR Pi's IP and credentials:
+#   nano config.py
+#   nano pi_dashcam/config_pi.py
+#   nano deploy_to_pi.sh
+
+# Deploy to Pi and start
 bash deploy_to_pi.sh
 bash start.sh
 ```
@@ -256,10 +293,29 @@ bash start.sh
 | **Proximity Sensor** | Ultrasonic distance with color-coded alerts |
 | **Temperature** | MPU6050 on-chip temperature in °C and °F |
 | **AI Detections** | Real-time list of detected objects with confidence scores |
+| **SOS Emergency** | Auto-triggers on multiple impacts, manual button, 10s countdown |
 | **Event Log** | Collision and proximity events with timestamps |
 | **Recording Strip** | Thumbnail gallery of saved clips and snapshots |
-| **Manual Controls** | Snapshot / Save Clip buttons |
+| **Manual Controls** | Snapshot / Save Clip / SOS buttons |
 | **Settings** | Adjustable alert distance threshold |
+
+---
+
+## 🚨 SOS Emergency System
+
+### Auto-Trigger
+After **2 G-force spikes** within 10 seconds, SOS activates automatically.
+
+### Manual Trigger
+Red **SOS** button in the dashboard header — requires confirmation.
+
+### What Happens
+1. Full-screen emergency overlay with **10-second countdown**
+2. Ambulance (108) and Police (100) dispatch simulation
+3. Crash evidence is saved: **video clip + snapshot + sensor data + GPS location**
+4. Pi OLED shows `!! SOS ACTIVE !!` and LED flashes
+5. **Cancel button** available during countdown if you're okay
+6. After countdown → dispatch confirmation with ETA info
 
 ---
 
@@ -269,13 +325,15 @@ bash start.sh
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `YOLO_MODEL` | `yolov8s.pt` | YOLO model file |
+| `YOLO_MODEL` | `yolov8s.pt` | YOLO model file (auto-downloads) |
 | `DETECTION_INTERVAL` | `3` | Process every Nth frame |
 | `PROXIMITY_THRESHOLD` | `0.30` | Bbox area ratio to trigger "too close" |
 | `CONFIDENCE_THRESHOLD` | `0.30` | Minimum detection confidence |
 | `G_FORCE_THRESHOLD` | `1.5` | G-force to trigger collision event |
 | `DISTANCE_ALERT_CM` | `25` | Ultrasonic distance alert threshold |
 | `BUFFER_SECONDS` | `30` | Ring buffer duration for pre-event recording |
+| `SOS_SPIKE_COUNT` | `2` | G-force spikes to auto-trigger SOS |
+| `SOS_SPIKE_WINDOW` | `10` | Seconds window for consecutive spikes |
 
 ### Raspberry Pi (`pi_dashcam/config_pi.py`)
 
@@ -293,6 +351,12 @@ bash start.sh
 ## 🛠️ Useful Commands
 
 ```bash
+# Start the dashboard
+bash start.sh
+
+# Deploy code changes to Pi
+bash deploy_to_pi.sh
+
 # Check Pi service status
 ssh abhiroop@10.42.0.116 "systemctl status dashcam"
 
@@ -302,8 +366,8 @@ ssh abhiroop@10.42.0.116 "journalctl -u dashcam -f"
 # Restart Pi service
 ssh abhiroop@10.42.0.116 "sudo systemctl restart dashcam"
 
-# Redeploy after code changes
-bash deploy_to_pi.sh
+# Kill busy ports and restart
+sudo fuser -k 5000/tcp 8080/udp 8081/udp 8082/udp 2>/dev/null; bash start.sh
 ```
 
 ---
@@ -321,52 +385,58 @@ bash deploy_to_pi.sh
 
 ## 🧠 AI Detection
 
-The system uses **YOLOv8s** running on the laptop's GPU for real-time object detection:
+The system uses **YOLOv8s** (`yolov8s.pt`, 22MB) running on the laptop's GPU for real-time object detection.
 
-- **Detected classes:** Person, Bicycle, Car, Motorcycle, Bus, Truck
-- **Proximity alert:** Triggers when an object's bounding box occupies > 30% of the frame **AND** the ultrasonic sensor reads < 25cm
-- **Inference:** ~15-25ms per frame on RTX 2050
+| Setting | Value |
+|---------|-------|
+| **Model** | YOLOv8s (small) |
+| **Detected classes** | Person, Bicycle, Car, Motorcycle, Bus, Truck |
+| **Inference speed** | ~15-25ms per frame on RTX 2050 |
+| **Proximity alert** | Triggers when bbox > 30% of frame **AND** ultrasonic < 25cm |
+| **Events** | Proximity → snapshot only; Collision → snapshot + video |
+
+> The model weights (`yolov8s.pt`) are **not included in the repo** (gitignored). They download automatically from Ultralytics on first run via Step 5.
 
 ---
 
 ## ❗ Troubleshooting
 
-### Port Already in Use (Address already in use)
-
-If you see `OSError: [Errno 98] Address already in use` when starting the dashboard, a previous process is still holding the port.
+### Port Already in Use
 
 ```bash
-# Find what's using port 5000 (dashboard)
-sudo lsof -i :5000
-
-# Kill it by PID
-sudo kill -9 <PID>
-
-# Or kill all processes on ports 5000, 8080, 8081, 8082 at once
+# Kill all DashCam ports at once
 sudo fuser -k 5000/tcp 8080/udp 8081/udp 8082/udp
-```
 
-**Quick one-liner to kill everything and restart:**
-```bash
-sudo fuser -k 5000/tcp 8080/udp 8081/udp 8082/udp 2>/dev/null; bash start.sh
+# Then restart
+bash start.sh
 ```
 
 ### Pi Stream Not Connecting
 
 ```bash
-# Check if Pi service is running
+# Check if Pi is reachable
+ping -c 1 10.42.0.116
+
+# Check if dashcam service is running on Pi
 ssh abhiroop@10.42.0.116 "systemctl status dashcam"
 
-# Restart the Pi service
+# Restart the service
 ssh abhiroop@10.42.0.116 "sudo systemctl restart dashcam"
 
 # Check Pi logs for errors
 ssh abhiroop@10.42.0.116 "journalctl -u dashcam -n 50"
 ```
 
+### `yolov8s.pt` Not Found
+
+```bash
+source venv/bin/activate
+python -c "from ultralytics import YOLO; YOLO('yolov8s.pt')"
+```
+
 ### H.264 Decode Errors (`non-existing PPS 0 referenced`)
 
-These messages during startup are **normal** — they appear while ffmpeg waits for the first keyframe from the Pi's H.264 stream. They stop once the stream syncs (usually within 2-3 seconds).
+These messages during startup are **normal** — they appear while ffmpeg waits for the first keyframe. They stop once the stream syncs (2-3 seconds).
 
 ### Dashboard Shows `--` for Sensor Values
 

@@ -168,7 +168,8 @@ def main():
             "proximity",
             f"{detection['class_name']} close ({detection['area_ratio']:.0%}) + ultrasonic {ultrasonic_dist:.0f}cm",
             sensor_data=sensor_data,
-            snapshot_frame=frame
+            snapshot_frame=frame,
+            snapshot_only=True
         )
 
     # Sensor listener — collision only, NO proximity spam

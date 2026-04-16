@@ -43,8 +43,8 @@ class EventRecorder:
             conn.commit()
             conn.close()
 
-    def save_event(self, event_type, description="", sensor_data=None, snapshot_frame=None):
-        """Save an event: capture ring buffer video + snapshot."""
+    def save_event(self, event_type, description="", sensor_data=None, snapshot_frame=None, snapshot_only=False):
+        """Save an event: snapshot only, or snapshot + ring buffer video."""
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         video_path = None
         snap_path = None
@@ -56,21 +56,22 @@ class EventRecorder:
             cv2.imwrite(snap_path, snapshot_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
             print(f"[EventRecorder] Snapshot saved: {snap_name}")
 
-        # Save video from ring buffer (async)
-        video_name = f"{event_type}_{ts}.mp4"
-        video_path = os.path.join(RECORDING_DIR, video_name)
+        # Save video from ring buffer (async) — skip for snapshot-only events
+        if not snapshot_only:
+            video_name = f"{event_type}_{ts}.mp4"
+            video_path = os.path.join(RECORDING_DIR, video_name)
 
-        buffer_frames = self.stream.get_buffer_snapshot(seconds=PRE_EVENT_SECONDS)
+            buffer_frames = self.stream.get_buffer_snapshot(seconds=PRE_EVENT_SECONDS)
 
-        if buffer_frames:
-            t = threading.Thread(
-                target=self._write_video_with_continuation,
-                args=(video_path, buffer_frames, POST_EVENT_SECONDS),
-                daemon=True
-            )
-            t.start()
-        else:
-            video_path = None
+            if buffer_frames:
+                t = threading.Thread(
+                    target=self._write_video_with_continuation,
+                    args=(video_path, buffer_frames, POST_EVENT_SECONDS),
+                    daemon=True
+                )
+                t.start()
+            else:
+                video_path = None
 
         # Log to database
         self._log_event(event_type, description, video_path, snap_path, sensor_data)
