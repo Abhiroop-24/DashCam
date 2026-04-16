@@ -103,8 +103,8 @@ class SensorListener:
                 if self.on_collision:
                     self.on_collision(self.latest_data)
 
-                # Reset after 5 seconds
-                threading.Timer(5.0, self._reset_collision).start()
+                # Reset after 2 seconds (short enough for SOS multi-spike detection)
+                threading.Timer(2.0, self._reset_collision).start()
 
         # Check proximity alert
         if distance < DISTANCE_ALERT_CM:

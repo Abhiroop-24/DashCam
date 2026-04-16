@@ -110,6 +110,25 @@ def main():
     def on_collision(sensor_data):
         nonlocal last_collision_event
         now = time.time()
+
+        # ALWAYS track G-force spikes for SOS (even during recording cooldown)
+        g_spike_times.append(now)
+        g_spike_times[:] = [t for t in g_spike_times if now - t < config.SOS_SPIKE_WINDOW]
+        print(f"[MAIN] G-force spike! ({sensor_data.get('g_force', 0):.2f}g) — {len(g_spike_times)}/{config.SOS_SPIKE_COUNT} spikes in window")
+
+        if len(g_spike_times) >= config.SOS_SPIKE_COUNT:
+            g_force_val = sensor_data.get('g_force', 0)
+            frame = stream.get_frame()
+            trigger_sos(
+                f"Multiple collisions detected ({len(g_spike_times)} impacts, {g_force_val:.1f}g)",
+                sensor_data=sensor_data,
+                frame=frame,
+                recorder=recorder,
+                pi_comm=pi_comm
+            )
+            g_spike_times.clear()
+
+        # Cooldown only affects recording/alerts, not SOS tracking
         if now - last_collision_event < COLLISION_COOLDOWN:
             return
         last_collision_event = now
@@ -127,22 +146,6 @@ def main():
             socketio.emit('collision_alert', {})
         except Exception:
             pass
-
-        # Track G-force spikes for auto-SOS
-        g_spike_times.append(now)
-        # Remove old spikes outside the window
-        g_spike_times[:] = [t for t in g_spike_times if now - t < config.SOS_SPIKE_WINDOW]
-
-        if len(g_spike_times) >= config.SOS_SPIKE_COUNT:
-            g_force_val = sensor_data.get('g_force', 0)
-            trigger_sos(
-                f"Multiple collisions detected ({len(g_spike_times)} impacts, {g_force_val:.1f}g)",
-                sensor_data=sensor_data,
-                frame=frame,
-                recorder=recorder,
-                pi_comm=pi_comm
-            )
-            g_spike_times.clear()
 
     # AI proximity — ONLY triggers when AI sees person close AND ultrasonic < threshold
     def on_ai_proximity(detection, frame):
