@@ -100,67 +100,150 @@ dashcam/
 
 ---
 
-## 🚀 Setup & Installation
+## 🚀 Setup & Installation (Fresh Linux Laptop)
 
-### 1. Clone the Repository
+### Prerequisites
+
+- **Linux** (Ubuntu 22.04+ / Debian 12+ recommended)
+- **NVIDIA GPU** with CUDA support
+- **Python 3.10+**
+- **Raspberry Pi** connected via USB tethering or Ethernet
+
+### Step 1: Install System Dependencies
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip ffmpeg sshpass git
+```
+
+- `ffmpeg` — needed for video stream decoding and H.264 re-encoding
+- `sshpass` — needed for `deploy_to_pi.sh` to SSH into the Pi without password prompts
+
+### Step 2: Install NVIDIA Drivers + CUDA (if not already installed)
+
+```bash
+# Check if CUDA is already working
+nvidia-smi
+
+# If not installed, install NVIDIA drivers:
+sudo apt install -y nvidia-driver-535    # or your GPU's compatible version
+sudo reboot
+```
+
+### Step 3: Clone the Repository
 
 ```bash
 git clone https://github.com/Abhiroop-24/DashCam.git
 cd DashCam
 ```
 
-### 2. Laptop Setup
+### Step 4: Create Virtual Environment & Install Dependencies
 
 ```bash
-# Create virtual environment
+# Create and activate virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies (requires CUDA-compatible PyTorch)
+# Install PyTorch with CUDA first (check your CUDA version with: nvcc --version)
+# For CUDA 12.x:
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# For CUDA 11.8:
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# Install remaining dependencies
 pip install -r requirements.txt
-
-# Download YOLOv8 model weights (auto-downloads on first run, or manually)
-# The system uses yolov8s.pt by default (configured in config.py)
 ```
 
-> **Note:** PyTorch with CUDA support must be installed separately. See [pytorch.org](https://pytorch.org/get-started/locally/) for the correct command for your CUDA version.
+> **Verify CUDA is working:**
+> ```bash
+> python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}, GPU: {torch.cuda.get_device_name(0)}')"
+> ```
+> You should see `CUDA: True, GPU: <your GPU name>`
 
-### 3. Network Configuration
+### Step 5: Configure Network IPs
 
-Edit `config.py` (laptop) and `pi_dashcam/config_pi.py` (Pi) to match your network:
-
-```python
-# config.py (Laptop)
-PI_IP = "10.42.0.116"       # Your Pi's IP
-LAPTOP_IP = "10.42.0.1"     # Your laptop's IP
-
-# config_pi.py (Pi)  
-LAPTOP_IP = "10.42.0.1"     # Must match laptop's IP
-PI_IP = "10.42.0.116"       # Must match Pi's IP
-```
-
-The default assumes a direct USB-tethered connection. Adjust IPs for your network setup.
-
-### 4. Deploy to Raspberry Pi
+Find your laptop's IP and Pi's IP on the shared network:
 
 ```bash
-# Edit deploy_to_pi.sh with your Pi's credentials, then:
+# Find your laptop's IP (look for the Pi-facing interface)
+ip addr show
+```
+
+Then edit the config files:
+
+```bash
+nano config.py
+```
+```python
+# Change these to match YOUR network
+PI_IP = "10.42.0.116"       # ← Your Pi's IP address
+LAPTOP_IP = "10.42.0.1"     # ← Your laptop's IP address
+```
+
+```bash
+nano pi_dashcam/config_pi.py
+```
+```python
+# Must match the values above
+LAPTOP_IP = "10.42.0.1"
+PI_IP = "10.42.0.116"
+```
+
+### Step 6: Configure Deploy Script
+
+Edit `deploy_to_pi.sh` with your Pi's SSH credentials:
+
+```bash
+nano deploy_to_pi.sh
+```
+```bash
+PI_USER="your_pi_username"          # default: pi
+PI_HOST="10.42.0.116"               # your Pi's IP
+PI_PASS="your_pi_password"          # your Pi's password
+PI_DIR="/home/your_pi_username/dashcam"
+```
+
+### Step 7: Deploy Code to Raspberry Pi
+
+Make sure your Pi is connected and reachable:
+
+```bash
+# Test connectivity
+ping -c 1 10.42.0.116
+
+# Deploy
 bash deploy_to_pi.sh
 ```
 
-This will:
-- Copy all `pi_dashcam/` files to the Pi
-- Install Python dependencies on the Pi
-- Set up and start the `dashcam.service` systemd service
+This copies code to the Pi, installs Python packages, and starts the `dashcam` service.
 
-### 5. Start the System
+### Step 8: Start the Dashboard
 
 ```bash
-# On the laptop (Pi should already be running via systemd)
 bash start.sh
 ```
 
-The dashboard will be available at **http://localhost:5000**
+Open **http://localhost:5000** in your browser. Done! 🎉
+
+### Quick Reference — All Commands
+
+```bash
+# One-time setup (copy-paste all at once)
+sudo apt install -y python3 python3-venv python3-pip ffmpeg sshpass git
+git clone https://github.com/Abhiroop-24/DashCam.git
+cd DashCam
+python3 -m venv venv
+source venv/bin/activate
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements.txt
+
+# Edit config.py and pi_dashcam/config_pi.py with your IPs
+# Edit deploy_to_pi.sh with your Pi's SSH credentials
+
+bash deploy_to_pi.sh
+bash start.sh
+```
 
 ---
 
